@@ -26,11 +26,6 @@ public class SteamPlayerController : MonoBehaviour
         Vector3 movement = new Vector3(horizontal, 0, vertical) * (5f * Time.deltaTime);
         transform.Translate(movement);
         
-        // 액션 입력
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            p2pManager.SendGameAction("jump");
-        }
     }
     
     void SendPositionUpdate()
@@ -40,9 +35,7 @@ public class SteamPlayerController : MonoBehaviour
         {
             if (Vector3.Distance(transform.position, lastSentPosition) > 0.01f)
             {
-                p2pManager.SendPlayerPosition(transform.position);
-                lastSentPosition = transform.position;
-                lastSendTime = Time.time;
+                
             }
         }
     }

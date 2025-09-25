@@ -6,6 +6,8 @@ public class SteamManager : MonoBehaviour
     private static SteamManager s_instance;
     private bool m_bInitialized = false;
     
+    public bool IsInitialized => m_bInitialized;
+    
     public static SteamManager Instance
     {
         get
@@ -63,6 +65,4 @@ public class SteamManager : MonoBehaviour
             SteamAPI.Shutdown();
         }
     }
-    
-    public bool IsInitialized => m_bInitialized;
 }

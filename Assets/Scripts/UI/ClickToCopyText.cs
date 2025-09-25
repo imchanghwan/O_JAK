@@ -1,7 +1,7 @@
 using System;
-using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 using UnityEngine.EventSystems;
 
 public class ClickToCopyText : MonoBehaviour, IPointerClickHandler
@@ -24,20 +24,20 @@ public class ClickToCopyText : MonoBehaviour, IPointerClickHandler
         if (textComponent == null) return;
         if (lobbyManager == null) return;
 
-        String copyText = lobbyManager.LobbyId.ToString();
-        if (copyText == "0") return;
+        if (lobbyManager.lobbyStatus != LobbyStatus.Created) return;
+        String copyText = lobbyManager.lobbyId.ToString();
         
         GUIUtility.systemCopyBuffer = copyText;
         Debug.Log($"클립보드에 복사됨: {copyText}");
         ShowCopyFeedback();
     }
-    
-    void ShowCopyFeedback()
+
+    private void ShowCopyFeedback()
     {
         StartCoroutine(CopyFeedbackCoroutine());
     }
-    
-    System.Collections.IEnumerator CopyFeedbackCoroutine()
+
+    private IEnumerator CopyFeedbackCoroutine()
     {
         textComponent.color = feedbackColor;
         

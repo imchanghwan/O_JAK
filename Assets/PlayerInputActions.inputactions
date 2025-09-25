@@ -1,0 +1,51 @@
+{
+    "name": "PlayerInputActions",
+    "maps": [
+        {
+            "name": "UI",
+            "id": "93a45b54-a43a-4922-8b08-080d8ee0976e",
+            "actions": [
+                {
+                    "name": "New action",
+                    "type": "Button",
+                    "id": "61ec26a1-8e34-41e8-9530-baa48a30168c",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "d7fd1975-3786-4f94-bda4-66723937e64a",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "PC",
+                    "action": "New action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": [
+        {
+            "name": "PC",
+            "bindingGroup": "PC",
+            "devices": [
+                {
+                    "devicePath": "<Keyboard>",
+                    "isOptional": false,
+                    "isOR": false
+                },
+                {
+                    "devicePath": "<Mouse>",
+                    "isOptional": false,
+                    "isOR": false
+                }
+            ]
+        }
+    ]
+}

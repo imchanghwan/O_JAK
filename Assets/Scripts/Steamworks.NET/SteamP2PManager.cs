@@ -41,7 +41,7 @@ public class SteamP2PManager : MonoBehaviour
     public void StartP2PConnection()
     {
         // 로비에서 상대방 Steam ID 가져오기
-        CSteamID lobbyId = GetComponent<SteamLobbyManager>().LobbyId;
+        CSteamID lobbyId = GetComponent<SteamLobbyManager>().lobbyId;
         int numMembers = SteamMatchmaking.GetNumLobbyMembers(lobbyId);
         
         for (int i = 0; i < numMembers; i++)
