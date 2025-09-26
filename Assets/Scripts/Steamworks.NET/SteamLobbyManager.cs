@@ -40,10 +40,8 @@ public class SteamLobbyManager : MonoBehaviour
 
     public LobbyStatusEvent lobbyStatusEvent = new LobbyStatusEvent();
     public JoinStatusEvent joinStatusEvent = new JoinStatusEvent();
-    public LobbyMemberEvent lobbyMemberEvent = new LobbyMemberEvent();
 
     public CSteamID lobbyId { get; private set; }
-    public List<CSteamID> memberList { get; private set; } = new List<CSteamID>();
     private void SetLobbyStatus(LobbyStatus newStatus)
     {
         if (lobbyStatus == newStatus) return;
@@ -69,7 +67,7 @@ public class SteamLobbyManager : MonoBehaviour
     
     void Start()
     {
-        if (!SteamManager.Instance.IsInitialized) return;
+        if (!SteamManager.Instance.Initialized) return;
         
         // 콜백 등록
         lobbyCreatedCallback = Callback<LobbyCreated_t>.Create(OnLobbyCreated);
@@ -81,7 +79,7 @@ public class SteamLobbyManager : MonoBehaviour
     // Create Lobby
     public void CreateLobby(ELobbyType lobbyType, int maxMembers)
     {
-        if (!SteamManager.Instance.IsInitialized)
+        if (!SteamManager.Instance.Initialized)
         {
             SetLobbyStatus(LobbyStatus.SteamError);
             return;
@@ -160,15 +158,10 @@ public class SteamLobbyManager : MonoBehaviour
         
         if (callback.m_EChatRoomEnterResponse == 1)
         {
-            SetJoinStatus(JoinStatus.Joined);
-            memberList.Add(SteamUser.GetSteamID());
-            lobbyMemberEvent?.Invoke(memberList.Count);
-            if (!IsHost) //!host가 접속시
-            {
-                // get lobby status
-                // 이후 get한 data를 set 해줘야함
-            } 
+            HostId = SteamMatchmaking.GetLobbyOwner(lobbyId);
+
             Debug.Log("로비 입장 성공!");
+            SetJoinStatus(JoinStatus.Joined);
         }
         else
         {
@@ -178,13 +171,12 @@ public class SteamLobbyManager : MonoBehaviour
     }
     
     // Todo: when join or leave, invoke join or leave message
+    // SteamMatchmaking.SendLobbyChatMsg(lobbyId, Encoding.UTF8.GetBytes(message), message.Length);
 
-    // 멤버 입퇴장 콜백 (!host용)
     private void OnLobbyChatUpdate(LobbyChatUpdate_t callback)
     {
         CSteamID userId = new CSteamID(callback.m_ulSteamIDUserChanged);
         uint stateChange = callback.m_rgfChatMemberStateChange;
-        Debug.Log("Changed");
         // 입장시 member data 자신제외 보내기
         // 퇴장시 member 제거
         
@@ -199,25 +191,25 @@ public class SteamLobbyManager : MonoBehaviour
         if ((stateChange & (uint)EChatMemberStateChange.k_EChatMemberStateChangeLeft) != 0)
         {
             Debug.Log("플레이어 퇴장!");
-            // 플레이어 제거 처리
-            memberList.Remove(userId);
-            lobbyMemberEvent?.Invoke(memberList.Count);
         }
     
         // 연결 끊김
         if ((stateChange & (uint)EChatMemberStateChange.k_EChatMemberStateChangeDisconnected) != 0)
         {
             Debug.Log("플레이어 연결 끊김!");
-            memberList.Remove(userId);
-            lobbyMemberEvent?.Invoke(memberList.Count);
         }
     
         // 강제 퇴장
         if ((stateChange & (uint)EChatMemberStateChange.k_EChatMemberStateChangeKicked) != 0)
         {
             Debug.Log("플레이어 강제 퇴장!");
-            memberList.Remove(userId);
-            lobbyMemberEvent?.Invoke(memberList.Count);
         }
+    }
+
+    public void StartGame()
+    {
+        // TODO:
+        // 로비 멤버 모이지 않으면 return;
+        // 각 플레이어에게 sendMessage로 세션 연결
     }
 }

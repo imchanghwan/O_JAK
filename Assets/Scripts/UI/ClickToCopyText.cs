@@ -15,6 +15,7 @@ public class ClickToCopyText : MonoBehaviour, IPointerClickHandler
 
     private void Start()
     {
+        textComponent = GetComponent<Text>();
         lobbyManager = FindObjectOfType<SteamLobbyManager>();
         originalColor = textComponent.color;
     }

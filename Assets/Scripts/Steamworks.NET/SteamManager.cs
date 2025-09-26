@@ -6,7 +6,7 @@ public class SteamManager : MonoBehaviour
     private static SteamManager s_instance;
     private bool m_bInitialized = false;
     
-    public bool IsInitialized => m_bInitialized;
+    public bool Initialized => m_bInitialized;
     
     public static SteamManager Instance
     {
