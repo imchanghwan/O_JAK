@@ -14,12 +14,16 @@ public class SteamGameUI : MonoBehaviour
         public int maxMembers;
     }
     [SerializeField] private List<LobbyButtonData> createLobbyButtons;
+    
     [SerializeField] private Button joinLobbyByIdButton;
     [SerializeField] private Button inviteFriendButton;
     [SerializeField] private Button leaveLobbyButton;
+    [SerializeField] private Button startGameButton;
+    
     [SerializeField] private Text lobbyStatusText;
     [SerializeField] private Text joinStatusText;
     [SerializeField] private Text lobbyIdText;
+    
     [SerializeField] private InputField lobbyIdInput;
     
     
@@ -52,36 +56,40 @@ public class SteamGameUI : MonoBehaviour
             });
         }
         
-        // invite friend
-        inviteFriendButton.onClick.AddListener(() => {
-            lobbyManager.InviteFriend();
+        startGameButton.onClick.AddListener(() =>
+        {
+            lobbyManager.StartGame();
         });
         
+        // invite friend
+        inviteFriendButton.onClick.AddListener(() => { lobbyManager.InviteFriend(); });
+        
         // join lobby
-        joinLobbyByIdButton.onClick.AddListener(() => {
-            string inputText = lobbyIdInput.text;
-            Debug.Log($"입력된 텍스트: '{inputText}'");
-            Debug.Log($"텍스트 길이: {inputText.Length}");
+        joinLobbyByIdButton.onClick.AddListener(JoinLobbyById);
 
-            if (ulong.TryParse(lobbyIdInput.text, out ulong lobbyId))
-            {
-                CSteamID steamId = new CSteamID(lobbyId);
-                Debug.Log($"SteamID 유효성: {steamId.IsValid()}");
-                lobbyManager.JoinLobbyById(steamId);
-            }
-            else
-            {
-                Debug.LogError("잘못된 로비 ID");
-            }
-        });
-
-        leaveLobbyButton.onClick.AddListener(() => {
-            lobbyManager.LeaveLobby();
-        });
+        leaveLobbyButton.onClick.AddListener(() => { lobbyManager.LeaveLobby(); });
     }
     
     private void OnLobbyDataUpdate(LobbyDataUpdate_t callback)
     {
         lobbyIdText.text = $"LOBBY ID : {callback.m_ulSteamIDLobby}";
+    }
+
+    private void JoinLobbyById()
+    {
+        string inputText = lobbyIdInput.text;
+        Debug.Log($"입력된 텍스트: '{inputText}'");
+        Debug.Log($"텍스트 길이: {inputText.Length}");
+
+        if (ulong.TryParse(lobbyIdInput.text, out ulong lobbyId))
+        {
+            CSteamID steamId = new CSteamID(lobbyId);
+            Debug.Log($"SteamID 유효성: {steamId.IsValid()}");
+            lobbyManager.JoinLobbyById(steamId);
+        }
+        else
+        {
+            Debug.LogError("잘못된 로비 ID");
+        }
     }
 }

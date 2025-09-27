@@ -5,11 +5,11 @@ using System.Collections.Generic;
 
 public class SteamP2PManager : MonoBehaviour
 {
-    private bool isConnected = false;
     private CSteamID lobbyId;
     
     // 콜백
     private Callback<P2PSessionRequest_t> p2pSessionRequestCallback;
+    private Callback<P2PSessionConnectFail_t> p2pSessionConnectFail;
     
     // 메시지 큐
     private Queue<NetworkMessage> messageQueue = new Queue<NetworkMessage>();
@@ -44,16 +44,19 @@ public class SteamP2PManager : MonoBehaviour
         if (!SteamManager.Instance.Initialized) return;
     
         p2pSessionRequestCallback = Callback<P2PSessionRequest_t>.Create(OnP2PSessionRequest);
+        p2pSessionConnectFail = Callback<P2PSessionConnectFail_t>.Create(OnP2PSessionConnectFail);
     }
     
     // host send message (when players send messages to host)
     public void HostSendMessage(NetworkMessage message)
     {
-        int numMembers = SteamMatchmaking.GetNumLobbyMembers(lobbyId);
+        int numMembers = SteamMatchmaking.GetNumLobbyMembers(SteamLobbyManager.lobbyId);
+        Debug.Log($"lobby members : {numMembers}");
         
         for (int i = 0; i < numMembers; i++)
         {
-            CSteamID memberId = SteamMatchmaking.GetLobbyMemberByIndex(lobbyId, i);
+            Debug.Log("host send message for");
+            CSteamID memberId = SteamMatchmaking.GetLobbyMemberByIndex(SteamLobbyManager.lobbyId, i);
             // host 본인 제외 전송
             if (memberId != SteamUser.GetSteamID())
             {
@@ -91,19 +94,42 @@ public class SteamP2PManager : MonoBehaviour
     
     private void OnP2PSessionRequest(P2PSessionRequest_t callback)
     {
-        lobbyId = GetComponent<SteamLobbyManager>().lobbyId;
+        lobbyId = SteamLobbyManager.lobbyId;
         Debug.Log($"P2P 세션 요청 받음: {callback.m_steamIDRemote}");
         
         // 세션 수락
         SteamNetworking.AcceptP2PSessionWithUser(callback.m_steamIDRemote);
         //remoteSteamId = callback.m_steamIDRemote;
-        isConnected = true;
+    }
+
+    private void OnP2PSessionConnectFail(P2PSessionConnectFail_t callback)
+    {
+        CSteamID failedSteamId = callback.m_steamIDRemote;
+        string playerName = SteamFriends.GetFriendPersonaName(failedSteamId);
+        EP2PSessionError error = (EP2PSessionError)callback.m_eP2PSessionError;
+    
+        Debug.LogError($"P2P 연결 실패: {playerName} - 오류 코드: {error}");
+    
+        switch (error)
+        {
+            case EP2PSessionError.k_EP2PSessionErrorNone:
+                Debug.Log("오류 없음");
+                break;
+            case EP2PSessionError.k_EP2PSessionErrorNoRightsToApp:
+                Debug.LogError("로컬 사용자가 앱을 소유하지 않음");
+                break;
+            case EP2PSessionError.k_EP2PSessionErrorTimeout:
+                Debug.LogError("연결 시간 초과");
+                break;
+            default:
+                Debug.LogError($"알 수 없는 오류: {error}");
+                break;
+        }
+
     }
     
     private void Update()
     {
-        if (!isConnected) return;
-        
         // 메시지 수신 확인
         uint msgSize;
         while (SteamNetworking.IsP2PPacketAvailable(out msgSize))

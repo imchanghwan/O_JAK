@@ -28,8 +28,6 @@ public enum JoinStatus
 
 public class SteamLobbyManager : MonoBehaviour
 {
-    [SerializeField] private int maxPlayers = 2;
-    
     [Serializable] public class LobbyStatusEvent : UnityEvent<LobbyStatus> { }
     [Serializable] public class JoinStatusEvent : UnityEvent<JoinStatus> { }
     [Serializable] public class LobbyMemberEvent : UnityEvent<int> { }
@@ -41,7 +39,7 @@ public class SteamLobbyManager : MonoBehaviour
     public LobbyStatusEvent lobbyStatusEvent = new LobbyStatusEvent();
     public JoinStatusEvent joinStatusEvent = new JoinStatusEvent();
 
-    public CSteamID lobbyId { get; private set; }
+    public static CSteamID lobbyId { get; private set; }
     private void SetLobbyStatus(LobbyStatus newStatus)
     {
         if (lobbyStatus == newStatus) return;
@@ -94,7 +92,15 @@ public class SteamLobbyManager : MonoBehaviour
     public void InviteFriend()
     {
         if (!lobbyId.IsValid()) return;
-        SteamFriends.ActivateGameOverlayInviteDialog(lobbyId);
+        if (SteamUtils.IsOverlayEnabled())
+        {
+            Debug.Log("InviteFriend");
+            SteamFriends.ActivateGameOverlayInviteDialog(lobbyId);
+        }
+        else
+        {
+            Debug.Log("overlay is disabled");
+        }
     }
 
     // Join Lobby By Id (!host용)
@@ -162,6 +168,8 @@ public class SteamLobbyManager : MonoBehaviour
 
             Debug.Log("로비 입장 성공!");
             SetJoinStatus(JoinStatus.Joined);
+            SteamNetworking.CloseP2PSessionWithUser(HostId);
+            Debug.Log("P2P 세션 강제 종료");
         }
         else
         {
@@ -211,5 +219,17 @@ public class SteamLobbyManager : MonoBehaviour
         // TODO:
         // 로비 멤버 모이지 않으면 return;
         // 각 플레이어에게 sendMessage로 세션 연결
+        int numMembers = SteamMatchmaking.GetNumLobbyMembers(lobbyId);
+        int maxMembers = SteamMatchmaking.GetLobbyMemberLimit(lobbyId);
+        if (numMembers == maxMembers)
+        {
+            SteamP2PManager.NetworkMessage message = new SteamP2PManager.NetworkMessage
+            {
+                messageType = SteamP2PManager.MessageType.Message,
+                data = "start"
+            };
+            GetComponent<SteamP2PManager>().HostSendMessage(message);
+            Debug.Log("start game");
+        }
     }
 }

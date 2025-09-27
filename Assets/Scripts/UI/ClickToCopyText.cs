@@ -26,7 +26,7 @@ public class ClickToCopyText : MonoBehaviour, IPointerClickHandler
         if (lobbyManager == null) return;
 
         if (lobbyManager.lobbyStatus != LobbyStatus.Created) return;
-        String copyText = lobbyManager.lobbyId.ToString();
+        String copyText = SteamLobbyManager.lobbyId.ToString();
         
         GUIUtility.systemCopyBuffer = copyText;
         Debug.Log($"클립보드에 복사됨: {copyText}");
