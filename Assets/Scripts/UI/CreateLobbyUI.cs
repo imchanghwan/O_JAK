@@ -23,8 +23,10 @@ public class CreateLobbyUI : MonoBehaviour
     private void CreateLobby()
     {
         ELobbyType lobbyType = GetLobbyType();
-        MainUIManager.Instance.SetStatusFeedbackText("Creating Lobby..");
-        SteamMatchmaking.CreateLobby(lobbyType, 2);
+        string lobbyName = lobbyNameInputField.text;
+        
+        SteamLobbyManager.Instance.CreateLobby(lobbyType, 2, lobbyName);
+        SceneMangaer.Instance.LoadGameScene("LobbyScene");
     }
 
     private ELobbyType GetLobbyType()

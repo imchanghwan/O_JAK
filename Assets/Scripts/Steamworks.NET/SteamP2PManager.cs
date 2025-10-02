@@ -50,13 +50,13 @@ public class SteamP2PManager : MonoBehaviour
     // host send message (when players send messages to host)
     public void HostSendMessage(NetworkMessage message)
     {
-        int numMembers = SteamMatchmaking.GetNumLobbyMembers(SteamLobbyManager.lobbyId);
+        int numMembers = SteamMatchmaking.GetNumLobbyMembers(SteamLobbyManager.LobbyId);
         Debug.Log($"lobby members : {numMembers}");
         
         for (int i = 0; i < numMembers; i++)
         {
             Debug.Log("host send message for");
-            CSteamID memberId = SteamMatchmaking.GetLobbyMemberByIndex(SteamLobbyManager.lobbyId, i);
+            CSteamID memberId = SteamMatchmaking.GetLobbyMemberByIndex(SteamLobbyManager.LobbyId, i);
             // host 본인 제외 전송
             if (memberId != SteamUser.GetSteamID())
             {
@@ -94,7 +94,7 @@ public class SteamP2PManager : MonoBehaviour
     
     private void OnP2PSessionRequest(P2PSessionRequest_t callback)
     {
-        lobbyId = SteamLobbyManager.lobbyId;
+        lobbyId = SteamLobbyManager.LobbyId;
         Debug.Log($"P2P 세션 요청 받음: {callback.m_steamIDRemote}");
         
         // 세션 수락

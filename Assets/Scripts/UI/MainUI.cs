@@ -5,11 +5,11 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class MainUIManager : MonoBehaviour
+public class MainUI : MonoBehaviour
 {
-    [Header("━━━━━ Title Menu ━━━━━")] [Header("Button")] [SerializeField]
-    private Button offlinePlayButton;
-
+    [Header("━━━━━ Title Menu ━━━━━")] 
+    [Header("Button")] 
+    [SerializeField] private Button offlinePlayButton;
     [SerializeField] private Button onlinePlayButton;
     [SerializeField] private Button howToPlayButton;
     [SerializeField] private Button optionsButton;
@@ -21,22 +21,7 @@ public class MainUIManager : MonoBehaviour
     [SerializeField] private GameObject onlineGamePanel;
     [SerializeField] private GameObject howToPlayGamePanel;
     [SerializeField] private GameObject optionsPanel;
-    public GameObject StatusFeedbackPanel;
-
-    public static MainUIManager Instance { get; private set; }
-
-    private void Awake()
-    {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-    }
-
+    
     private void Start()
     {
         //offlinePlayButton.onClick.AddListener(() => SetActivePanelObject(offlineGamePanel));
@@ -46,17 +31,6 @@ public class MainUIManager : MonoBehaviour
 
         // 게임종료
         exitButton.onClick.AddListener(ExitGame);
-    }
-
-    public void SetStatusFeedbackText(string text)
-    {
-        StatusFeedbackPanel.SetActive(true);
-        StatusFeedbackPanel.transform.GetChild(0).GetComponent<Text>().text = text;
-    }
-
-    public void CloseStatusFeedbackPanel()
-    {
-        StatusFeedbackPanel.SetActive(false);
     }
 
     private void ExitGame()

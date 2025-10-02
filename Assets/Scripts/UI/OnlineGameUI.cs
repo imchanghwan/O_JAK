@@ -1,4 +1,4 @@
-using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -38,6 +38,9 @@ public class OnlineGameUI : MonoBehaviour
     // 요청 이후 lobby list 수신 이벤트 함수 실행
     private void OnEnable()
     {
+        lobbyIdInputField.text = "";
+        feedbackText.text = "";
+        
         lobbyListManager.RequestLobbyList();
         lobbyListManager.OnLobbyListUpdated.AddListener(UpdateLobbyList);
     }
@@ -64,11 +67,10 @@ public class OnlineGameUI : MonoBehaviour
             CSteamID steamId = new CSteamID(lobbyId);
             if (!steamId.IsValid())
             {
-                feedbackText.text = "Invalid lobbyId";
+                feedbackText.text = "Invalid lobby Id";
                 return;
             }
 
-            MainUIManager.Instance.SetStatusFeedbackText("Joining Lobby..");
             SteamMatchmaking.JoinLobby(steamId);
         }
         else
@@ -79,12 +81,15 @@ public class OnlineGameUI : MonoBehaviour
     
     private void UpdateLobbyList(List<LobbyListManager.LobbyInfo> lobbyList)
     {
+        // reset
+        selectedLobbyId = new CSteamID();
+        joinLobbyButton.interactable = false;
+        
         foreach (Transform child in content)
         {
             Destroy(child.gameObject);
         }
         
-        // Content에 새 아이템 생성
         foreach (var lobbyInfo in lobbyList)
         {
             CreateLobbyItem(lobbyInfo);
@@ -127,7 +132,6 @@ public class OnlineGameUI : MonoBehaviour
     {
         if (toggleGroup.AnyTogglesOn())
         {
-            MainUIManager.Instance.SetStatusFeedbackText("Joining Lobby..");
             SteamMatchmaking.JoinLobby(selectedLobbyId);
         }
     }

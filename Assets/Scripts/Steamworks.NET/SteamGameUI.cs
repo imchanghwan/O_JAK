@@ -46,16 +46,6 @@ public class SteamGameUI : MonoBehaviour
             joinStatusText.text = status.ToString();
         });
         
-        // TODO: chat event => chatText += msg\n;
-
-        // create lobby
-        foreach (LobbyButtonData lobbyButtonData in createLobbyButtons)
-        {
-            lobbyButtonData.button.onClick.AddListener(() => {
-                lobbyManager.CreateLobby(lobbyButtonData.lobbyType, lobbyButtonData.maxMembers);
-            });
-        }
-        
         startGameButton.onClick.AddListener(() =>
         {
             lobbyManager.StartGame();
