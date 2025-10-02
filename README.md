@@ -1,2 +1,0 @@
-# O_JAK
-G-STAR GAME

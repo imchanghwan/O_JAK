@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Steamworks;
 using UnityEngine;
 using UnityEngine.Events;
@@ -117,14 +116,6 @@ public class SteamLobbyManager : MonoBehaviour
         if (!lobbyId.IsValid()) return;
         SetLobbyStatus(LobbyStatus.None);
         SetJoinStatus(JoinStatus.None);
-        if (IsHost)
-        {
-            
-        }
-        else
-        {
-            // Send Data로 lobby 상태 넘겨줘야함.
-        }
         SteamMatchmaking.LeaveLobby(lobbyId);
     }
     
