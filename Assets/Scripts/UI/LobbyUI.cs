@@ -12,6 +12,7 @@ public class LobbyUI : MonoBehaviour
     [SerializeField] private Button inviteFriendButton;
     [SerializeField] private Button loadGameButton;
     [SerializeField] private Button leaveLobbyButton;
+    [SerializeField] private Button clipboardButton;
     
     [Header("Lobby Chat UI")]
     [SerializeField] private Transform chatContent;
@@ -28,11 +29,23 @@ public class LobbyUI : MonoBehaviour
     
     private LobbyChatManager lobbyChatManager;
     private Queue<GameObject> chatMessages = new Queue<GameObject>();
+    private CSteamID lobbyID;
     private Dictionary<CSteamID, GameObject> playerList = new Dictionary<CSteamID, GameObject>();
-
+    
     private void Awake()
     {
         lobbyChatManager = GetComponent<LobbyChatManager>();
+        lobbyID = SteamLobbyManager.Instance.LobbyId;
+    }
+
+    // client 로비 들어왔을때 처리
+    private void OnEnable()
+    {
+        List<SteamLobbyManager.LobbyMemberInfo> lobbyMembers = SteamLobbyManager.Instance.GetLobbyMembers(lobbyID);
+        UpdateAllPlayerList(lobbyMembers);
+        
+        SteamLobbyManager.Instance.OnLobbyMemeberUpdated.AddListener(UpdateLobbyPlayerList);
+        SteamLobbyManager.Instance.OnLobbyHostUpdated.AddListener(UpdateLobbyHost);
     }
 
     private void Start()
@@ -44,10 +57,9 @@ public class LobbyUI : MonoBehaviour
         lobbyChatInputField.onEndEdit.AddListener(OnChatInputEnd);
         lobbyChatManager.OnLobbyChatUpdated.AddListener(UpdateLobbyChat);
         
-        SteamLobbyManager.Instance.OnJoinLobby.AddListener(AddPlayerList);
-        SteamLobbyManager.Instance.OnLeaveLobby.AddListener(RemovePlayerList);
-        SteamLobbyManager.Instance.OnClientJoinLobby.AddListener(UpdateAllPlayersList);
+        clipboardButton.onClick.AddListener(Clipboard);
     }
+
 
     // chat old input
     private void Update()
@@ -71,21 +83,45 @@ public class LobbyUI : MonoBehaviour
             Debug.Log(false);
         }
     }
-
-    // client 최초 입장시
-    private void UpdateAllPlayersList(List<SteamLobbyManager.LobbyMemberInfo> lobbyMembers)
+    
+    private void UpdateLobbyHost()
     {
+        RemoveAllPlayerList();
+        List<SteamLobbyManager.LobbyMemberInfo> lobbyMembers = SteamLobbyManager.Instance.GetLobbyMembers(lobbyID);
+        UpdateAllPlayerList(lobbyMembers);
+    }
+    
+    private void RemoveAllPlayerList()
+    {
+        playerList.Clear();
+        foreach (Transform child in playerListContent)
+        {
+            Destroy(child.gameObject);
+        }
+    }
+    
+    private void UpdateAllPlayerList(List<SteamLobbyManager.LobbyMemberInfo> lobbyMembers)
+    {
+        Debug.Log("UpdateAllPlayersList");
         foreach (SteamLobbyManager.LobbyMemberInfo member in lobbyMembers)
         {
             AddPlayerList(member);
         }
     }
 
-    private void UpdatePlayerList(SteamLobbyManager.LobbyMemberInfo lobbyMember)
+    private void UpdateLobbyPlayerList(SteamLobbyManager.LobbyMemberInfo member)
     {
-        
+        int memberCount = SteamMatchmaking.GetNumLobbyMembers(lobbyID);
+        if (playerList.Count < memberCount) // 로비 멤버 감소
+        {
+            AddPlayerList(member);
+        }
+        else if (playerList.Count > memberCount) // 로비 멤버 증가
+        {
+            RemovePlayerList(member.id);
+        }
     }
-
+    
     private void AddPlayerList(SteamLobbyManager.LobbyMemberInfo lobbyMember)
     {
         GameObject newPlayer = Instantiate(playerListPrefab, playerListContent);
@@ -94,7 +130,7 @@ public class LobbyUI : MonoBehaviour
         Text hostText = newPlayer.transform.Find("HostText").GetComponent<Text>();
         Transform hostButtons = newPlayer.transform.Find("HostButtons");
         RawImage playerImage = newPlayer.transform.Find("PlayerImage").GetComponent<RawImage>();
-
+        playerImage.rectTransform.localScale = new Vector3(1, -1, 1);
 
         playerList.Add(lobbyMember.id, newPlayer);
         if (lobbyMember.isHost)
@@ -130,28 +166,32 @@ public class LobbyUI : MonoBehaviour
         
     }
 
+    private void RemovePlayerList(CSteamID steamID)
+    {
+        Destroy(playerList[steamID]);
+        playerList.Remove(steamID);
+    }
+
     private void SetOwner(CSteamID steamID)
     {
+        if (!SteamLobbyManager.Instance.IsHost(SteamUser.GetSteamID())) return;
         if (steamID == CSteamID.Nil) return;
         SteamMatchmaking.SetLobbyOwner(SteamLobbyManager.Instance.LobbyId, steamID);
     }
 
     private void KickUser(CSteamID steamID)
     {
-        
+        if (!SteamLobbyManager.Instance.IsHost(SteamUser.GetSteamID())) return;
+        if (steamID == CSteamID.Nil) return;
     }
 
     private void BanUser(CSteamID steamID)
     {
+        if (!SteamLobbyManager.Instance.IsHost(SteamUser.GetSteamID())) return;
+        if (steamID == CSteamID.Nil) return;
         
     }
 
-    private void RemovePlayerList(SteamLobbyManager.LobbyMemberInfo lobbyMember)
-    {
-        Destroy(playerList[lobbyMember.id]);
-        playerList.Remove(lobbyMember.id);
-    }
-    
     private void InviteFriend()
     {
         SteamLobbyManager.Instance.InviteFriend();
@@ -160,26 +200,8 @@ public class LobbyUI : MonoBehaviour
     
     private void LeaveLobby()
     {
-        // 모든 데이터 초기화
-        ResetAllData();
         SteamMatchmaking.LeaveLobby(SteamLobbyManager.Instance.LobbyId);
         SceneMangaer.Instance.LoadGameScene("MainScene");
-    }
-
-    private void ResetAllData()
-    {
-        foreach (Transform child in chatContent.transform)
-        {
-            Destroy(child.gameObject);
-        }
-
-        foreach (Transform child in playerListContent.transform)
-        {
-            Destroy(child.gameObject);
-        }
-        
-        chatMessages.Clear();
-        playerList.Clear();
     }
 
     private void OnChatInputEnd(string input)
@@ -226,4 +248,9 @@ public class LobbyUI : MonoBehaviour
         scrollRect.verticalNormalizedPosition = 0;
     }
 
+    private void Clipboard()
+    {
+        GUIUtility.systemCopyBuffer = lobbyID.ToString();
+        Debug.Log($"Clipboard {lobbyID}");
+    }
 }

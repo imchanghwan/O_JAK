@@ -3,42 +3,14 @@ using System.Collections.Generic;
 using Steamworks;
 using UnityEngine;
 using UnityEngine.Events;
-
-public enum LobbyStatus
-{
-    None,
-    Creating,
-    Created,
-    FailedToCreate,
-    Starting,
-    Started,
-    FailedToStart,
-    Playing,
-    Disconnected,
-    Error,
-    SteamError
-}
-public enum JoinStatus
-{
-    None,
-    FailedToJoin,
-    Join,
-    Leave
-}
+using UnityEngine.Serialization;
 
 public class SteamLobbyManager : MonoBehaviour
 {
-    [Serializable] public class LobbyStatusEvent : UnityEvent<LobbyStatus> { }
-    [Serializable] public class JoinStatusEvent : UnityEvent<JoinStatus> { }
-    [Serializable] public class LobbyMemberEvent : UnityEvent<int> { }
     public CSteamID HostId { get; private set; }
     public bool isHost;
-    public LobbyStatus lobbyStatus { get; private set; } =  LobbyStatus.None;
-    public JoinStatus joinStatus { get; private set; } = JoinStatus.None;
-
-    public LobbyStatusEvent lobbyStatusEvent = new LobbyStatusEvent();
-    public JoinStatusEvent joinStatusEvent = new JoinStatusEvent();
-
+    public UnityEvent<LobbyMemberInfo> OnLobbyMemeberUpdated = new UnityEvent<LobbyMemberInfo>();
+    public UnityEvent OnLobbyHostUpdated = new UnityEvent();
     [Serializable]
     public struct LobbyMemberInfo
     {
@@ -48,38 +20,18 @@ public class SteamLobbyManager : MonoBehaviour
         public Texture2D avatar;
     }
     
-    public UnityEvent<LobbyMemberInfo> OnJoinLobby = new UnityEvent<LobbyMemberInfo>();
-    public UnityEvent<LobbyMemberInfo> OnLeaveLobby = new UnityEvent<LobbyMemberInfo>();
-    public UnityEvent<List<LobbyMemberInfo>> OnClientJoinLobby = new UnityEvent<List<LobbyMemberInfo>>();
-    
     public static SteamLobbyManager Instance { get; private set; }
 
     public CSteamID LobbyId { get; private set; }
     private string lobbyName;
     
-    private void SetLobbyStatus(LobbyStatus newStatus)
-    {
-        if (lobbyStatus == newStatus) return;
-        LobbyStatus oldStatus = lobbyStatus;
-        lobbyStatus = newStatus;
-        lobbyStatusEvent?.Invoke(newStatus);
-        Debug.Log($"로비 상태 변경: {oldStatus} → {newStatus}");
-    }
-    private void SetJoinStatus(JoinStatus newStatus)
-    {
-        if (joinStatus == newStatus) return;
-        JoinStatus oldStatus = joinStatus;
-        joinStatus = newStatus;
-        joinStatusEvent?.Invoke(newStatus);
-        Debug.Log($"로비 상태 변경: {oldStatus} → {newStatus}");
-    }
     
     // 콜백 핸들러들
     private Callback<LobbyCreated_t> lobbyCreatedCallback;
     private Callback<GameLobbyJoinRequested_t> lobbyJoinRequestCallback;
     private Callback<LobbyEnter_t> lobbyEnterCallback;
     private Callback<LobbyChatUpdate_t> lobbyChatUpdateCallback;
-
+    private Callback<LobbyDataUpdate_t> lobbyDataCallback;
 
     private void Awake()
     {
@@ -103,6 +55,7 @@ public class SteamLobbyManager : MonoBehaviour
         lobbyJoinRequestCallback = Callback<GameLobbyJoinRequested_t>.Create(OnLobbyJoinRequest);
         lobbyEnterCallback = Callback<LobbyEnter_t>.Create(OnLobbyEnter);
         lobbyChatUpdateCallback = Callback<LobbyChatUpdate_t>.Create(OnLobbyChatUpdate);
+        lobbyDataCallback = Callback<LobbyDataUpdate_t>.Create(OnLobbyDataUpdate);
     }
 
     public bool IsHost(CSteamID steamId)
@@ -126,6 +79,12 @@ public class SteamLobbyManager : MonoBehaviour
         return true;
     }
 
+    public void JoinLobby(CSteamID lobbyId)
+    {
+        SteamMatchmaking.JoinLobby(lobbyId);
+        SceneMangaer.Instance.LoadGameScene("LobbyScene");
+    }
+    
     public void CreateLobby(ELobbyType lobbyType, int maxMembers, string lobbyNameData)
     {
         SteamMatchmaking.CreateLobby(lobbyType, maxMembers);
@@ -163,15 +122,14 @@ public class SteamLobbyManager : MonoBehaviour
     {
         int avatarHandle = SteamFriends.GetMediumFriendAvatar(steamId); // 64x64
     
-        if (avatarHandle == -1)
+        if (avatarHandle == -1) // 로딩 중
         {
             Debug.Log("아바타 로딩 중...");
             return null; // 아직 로드 안됨
         }
     
-        if (avatarHandle == 0)
+        if (avatarHandle == 0) // 아바타 없음
         {
-            Debug.LogError("아바타 없음");
             return null;
         }
     
@@ -203,11 +161,9 @@ public class SteamLobbyManager : MonoBehaviour
 
             // 로비 데이터 설정
             SteamMatchmaking.SetLobbyData(LobbyId, "name", lobbyName);
-            SetLobbyStatus(LobbyStatus.Created);
         }
         else
         {
-            SetLobbyStatus(LobbyStatus.FailedToCreate);
             Debug.LogError("로비 생성 실패!");
         }
     }
@@ -215,7 +171,7 @@ public class SteamLobbyManager : MonoBehaviour
     // lobby join request 외부(초대링크, 게임참가 등)에서 join할시 콜백 (!host용)
     private void OnLobbyJoinRequest(GameLobbyJoinRequested_t callback)
     {
-        SteamMatchmaking.JoinLobby(callback.m_steamIDLobby);
+        JoinLobby(callback.m_steamIDLobby);
     }
 
     // lobby enter시 콜백 (client)
@@ -228,17 +184,11 @@ public class SteamLobbyManager : MonoBehaviour
             HostId = SteamMatchmaking.GetLobbyOwner(LobbyId);
 
             Debug.Log("로비 입장 성공!");
-            SetJoinStatus(JoinStatus.Join);
-            
-            List<LobbyMemberInfo> playerInfo = GetLobbyMembers(LobbyId);
-            
-            OnClientJoinLobby?.Invoke(playerInfo);
             // SteamNetworking.CloseP2PSessionWithUser(HostId);
             // Debug.Log("P2P 세션 강제 종료");
         }
         else
         {
-            SetJoinStatus(JoinStatus.FailedToJoin);
             Debug.LogError("로비 입장 실패!");
         }
     }
@@ -252,39 +202,52 @@ public class SteamLobbyManager : MonoBehaviour
         CSteamID userId = new CSteamID(callback.m_ulSteamIDUserChanged);
         uint stateChange = callback.m_rgfChatMemberStateChange;
         
-        LobbyMemberInfo playerInfo = GetLobbyMember(userId);
+        LobbyMemberInfo memberInfo = GetLobbyMember(userId);
         
+        OnLobbyMemeberUpdated?.Invoke(memberInfo);
         // 입장 체크
         if ((stateChange & (uint)EChatMemberStateChange.k_EChatMemberStateChangeEntered) != 0)
         {
-            Debug.Log("플레이어 입장!");
-            OnJoinLobby?.Invoke(playerInfo);
-            // 새 플레이어 처리
+            
         }
         else
         {
-            OnLeaveLobby?.Invoke(playerInfo);
+            CheckHostStatus();
         }
     
         // 퇴장 체크  
         if ((stateChange & (uint)EChatMemberStateChange.k_EChatMemberStateChangeLeft) != 0)
         {
-            Debug.Log("플레이어 퇴장!");
+            
         }
     
         // 연결 끊김
         if ((stateChange & (uint)EChatMemberStateChange.k_EChatMemberStateChangeDisconnected) != 0)
         {
-            Debug.Log("플레이어 연결 끊김!");
+            
         }
     
         // 강제 퇴장
         if ((stateChange & (uint)EChatMemberStateChange.k_EChatMemberStateChangeKicked) != 0)
         {
-            Debug.Log("플레이어 강제 퇴장!");
+            
         }
     }
 
+    private void OnLobbyDataUpdate(LobbyDataUpdate_t callback)
+    {
+        CheckHostStatus();
+    }
+
+    private void CheckHostStatus()
+    {
+        if (HostId != SteamMatchmaking.GetLobbyOwner(LobbyId))
+        {
+            HostId = SteamMatchmaking.GetLobbyOwner(LobbyId);
+            OnLobbyHostUpdated?.Invoke();
+        }
+    }
+    
     public void StartGame()
     {
         // TODO:

@@ -71,7 +71,7 @@ public class OnlineGameUI : MonoBehaviour
                 return;
             }
 
-            SteamMatchmaking.JoinLobby(steamId);
+            SteamLobbyManager.Instance.JoinLobby(steamId);
         }
         else
         {
@@ -132,7 +132,7 @@ public class OnlineGameUI : MonoBehaviour
     {
         if (toggleGroup.AnyTogglesOn())
         {
-            SteamMatchmaking.JoinLobby(selectedLobbyId);
+            SteamLobbyManager.Instance.JoinLobby(selectedLobbyId);
         }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using Steamworks;
 using UnityEngine;
@@ -39,6 +40,22 @@ public class SteamP2PManager : MonoBehaviour
             return JsonUtility.FromJson<NetworkMessage>(json);
         }
     }
+
+    public static SteamP2PManager Instance { get; private set; }
+    
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
     void Start()
     {
         if (!SteamManager.Instance.Initialized) return;
@@ -47,16 +64,33 @@ public class SteamP2PManager : MonoBehaviour
         p2pSessionConnectFail = Callback<P2PSessionConnectFail_t>.Create(OnP2PSessionConnectFail);
     }
     
+    public bool IsP2PSessionConnected(CSteamID targetId)
+    {
+        P2PSessionState_t sessionState;
+        bool hasSession = SteamNetworking.GetP2PSessionState(targetId, out sessionState);
+    
+        if (hasSession)
+        {
+            Debug.Log($"연결 활성: {sessionState.m_bConnectionActive}");
+            Debug.Log($"연결 중: {sessionState.m_bConnecting}");
+            Debug.Log($"P2P 세션 오류: {sessionState.m_eP2PSessionError}");
+        
+            return sessionState.m_bConnectionActive == 1;
+        }
+    
+        return false;
+    }
+    
     // host send message (when players send messages to host)
     public void HostSendMessage(NetworkMessage message)
     {
-        int numMembers = SteamMatchmaking.GetNumLobbyMembers(SteamLobbyManager.LobbyId);
+        int numMembers = SteamMatchmaking.GetNumLobbyMembers(SteamLobbyManager.Instance.LobbyId);
         Debug.Log($"lobby members : {numMembers}");
         
         for (int i = 0; i < numMembers; i++)
         {
             Debug.Log("host send message for");
-            CSteamID memberId = SteamMatchmaking.GetLobbyMemberByIndex(SteamLobbyManager.LobbyId, i);
+            CSteamID memberId = SteamMatchmaking.GetLobbyMemberByIndex(SteamLobbyManager.Instance.LobbyId, i);
             // host 본인 제외 전송
             if (memberId != SteamUser.GetSteamID())
             {
@@ -94,7 +128,7 @@ public class SteamP2PManager : MonoBehaviour
     
     private void OnP2PSessionRequest(P2PSessionRequest_t callback)
     {
-        lobbyId = SteamLobbyManager.LobbyId;
+        lobbyId = SteamLobbyManager.Instance.LobbyId;
         Debug.Log($"P2P 세션 요청 받음: {callback.m_steamIDRemote}");
         
         // 세션 수락
