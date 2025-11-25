@@ -257,9 +257,9 @@ public class SteamLobbyManager : MonoBehaviour
         int maxMembers = SteamMatchmaking.GetLobbyMemberLimit(LobbyId);
         if (numMembers == maxMembers)
         {
-            SteamP2PManager.NetworkMessage message = new SteamP2PManager.NetworkMessage
+            NetworkMessage message = new NetworkMessage
             {
-                messageType = SteamP2PManager.MessageType.Message,
+                messageType = MessageType.Message,
                 data = "start"
             };
             GetComponent<SteamP2PManager>().HostSendMessage(message);

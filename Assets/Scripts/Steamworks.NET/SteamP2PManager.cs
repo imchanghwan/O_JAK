@@ -3,6 +3,33 @@ using System.Collections;
 using Steamworks;
 using UnityEngine;
 using System.Collections.Generic;
+public enum MessageType
+{
+    Message,
+    GameStart,
+    GameEnd,
+    PlayerMove,
+}
+
+[Serializable] public class NetworkMessage
+{
+    public MessageType messageType;
+    public Vector3 position;
+    public CSteamID steamId;
+    public string data;
+        
+    public byte[] ToBytes()
+    {
+        string json = JsonUtility.ToJson(this);
+        return System.Text.Encoding.UTF8.GetBytes(json);
+    }
+        
+    public static NetworkMessage FromBytes(byte[] bytes)
+    {
+        string json = System.Text.Encoding.UTF8.GetString(bytes);
+        return JsonUtility.FromJson<NetworkMessage>(json);
+    }
+}
 
 public class SteamP2PManager : MonoBehaviour
 {
@@ -15,32 +42,7 @@ public class SteamP2PManager : MonoBehaviour
     // 메시지 큐
     private Queue<NetworkMessage> messageQueue = new Queue<NetworkMessage>();
 
-    public enum MessageType
-    {
-        Message,
-    }
     
-    [System.Serializable]
-    public class NetworkMessage
-    {
-        public MessageType messageType;
-        public Vector3 position;
-        public CSteamID steamId;
-        public string data;
-        
-        public byte[] ToBytes()
-        {
-            string json = JsonUtility.ToJson(this);
-            return System.Text.Encoding.UTF8.GetBytes(json);
-        }
-        
-        public static NetworkMessage FromBytes(byte[] bytes)
-        {
-            string json = System.Text.Encoding.UTF8.GetString(bytes);
-            return JsonUtility.FromJson<NetworkMessage>(json);
-        }
-    }
-
     public static SteamP2PManager Instance { get; private set; }
     
     private void Awake()
@@ -82,7 +84,7 @@ public class SteamP2PManager : MonoBehaviour
     }
     
     // host send message (when players send messages to host)
-    public void HostSendMessage(NetworkMessage message)
+    public void HostSendMessage(NetworkMessage message, EP2PSend ep2PSend  = EP2PSend.k_EP2PSendUnreliable)
     {
         int numMembers = SteamMatchmaking.GetNumLobbyMembers(SteamLobbyManager.Instance.LobbyId);
         Debug.Log($"lobby members : {numMembers}");
@@ -101,29 +103,21 @@ public class SteamP2PManager : MonoBehaviour
         }
     }
     
-    public void SendMessage(CSteamID steamId, NetworkMessage message)
+    public void SendMessage(CSteamID steamId, NetworkMessage message, EP2PSend ep2PSend = EP2PSend.k_EP2PSendUnreliable)
     {
-        if (!steamId.IsValid()) 
-        {
-            Debug.LogError("상대방 Steam ID 무효!");
-            return;
-        }
+        if (!steamId.IsValid()) return;
         
         byte[] data = message.ToBytes();
-        Debug.Log($"패킷 전송 시도: 크기={data.Length}, 상대방={steamId}");
         
         bool success = SteamNetworking.SendP2PPacket(
             steamId,
             data,
             (uint)data.Length,
-            EP2PSend.k_EP2PSendReliable
+            ep2PSend
         );
-        Debug.Log("P2P 메시지 전송 성공");
         
         if (!success)
-        {
             Debug.LogError("P2P 메시지 전송 실패!");
-        }
     }
     
     private void OnP2PSessionRequest(P2PSessionRequest_t callback)
@@ -202,8 +196,17 @@ public class SteamP2PManager : MonoBehaviour
                 case MessageType.Message:
                     Debug.Log($"{senderName} : {message.data}");
                     break;
+                case MessageType.GameStart:
+                    StartGame();
+                    break;
+                case MessageType.PlayerMove:
+                    break;
             }
         }
     }
-    
+
+    private void StartGame()
+    {
+        SceneMangaer.Instance.LoadGameScene("GameScene");
+    }
 }

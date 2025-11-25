@@ -6,11 +6,13 @@ using UnityEngine.UI;
 
 public class LobbyUI : MonoBehaviour
 {
-    [Header("Main UI")]
+    [Header("Host Menu")]
+    [SerializeField] private GameObject hostButtons;
     [SerializeField] private Button howToPlayButton;
     [SerializeField] private Button startGameButton;
     [SerializeField] private Button inviteFriendButton;
     [SerializeField] private Button loadGameButton;
+    [Header("Main UI")]
     [SerializeField] private Button leaveLobbyButton;
     [SerializeField] private Button clipboardButton;
     
@@ -51,7 +53,8 @@ public class LobbyUI : MonoBehaviour
     private void Start()
     {
         // main ui
-        inviteFriendButton.onClick.AddListener(InviteFriend);
+        DisActiveHostButton();
+        ActiveHostButton();
         leaveLobbyButton.onClick.AddListener(LeaveLobby);
         
         lobbyChatInputField.onEndEdit.AddListener(OnChatInputEnd);
@@ -83,10 +86,28 @@ public class LobbyUI : MonoBehaviour
             Debug.Log(false);
         }
     }
+
+    private void ActiveHostButton()
+    {
+        if (!SteamLobbyManager.Instance.IsHost(SteamUser.GetSteamID())) return;
+        hostButtons.SetActive(true);
+        startGameButton.onClick.AddListener(StartGame);
+        inviteFriendButton.onClick.AddListener(InviteFriend);
+    }
+
+    private void DisActiveHostButton()
+    {
+        if (SteamLobbyManager.Instance.IsHost(SteamUser.GetSteamID())) return;
+        hostButtons.SetActive(false);
+        startGameButton.onClick.RemoveListener(StartGame);
+        inviteFriendButton.onClick.RemoveListener(InviteFriend);
+    }
     
     private void UpdateLobbyHost()
     {
         RemoveAllPlayerList();
+        DisActiveHostButton();
+        ActiveHostButton();
         List<SteamLobbyManager.LobbyMemberInfo> lobbyMembers = SteamLobbyManager.Instance.GetLobbyMembers(lobbyID);
         UpdateAllPlayerList(lobbyMembers);
     }
@@ -190,6 +211,32 @@ public class LobbyUI : MonoBehaviour
         if (!SteamLobbyManager.Instance.IsHost(SteamUser.GetSteamID())) return;
         if (steamID == CSteamID.Nil) return;
         
+    }
+
+    private void StartGame()
+    {
+        int numMembers = SteamMatchmaking.GetNumLobbyMembers(lobbyID);
+        if (numMembers < 2) return;
+        
+        SceneMangaer.Instance.LoadGameScene("GameScene");
+        
+        // 세션연결 안된 유저 탐색
+        foreach (var player in playerList)
+        {
+            if (player.Key == SteamUser.GetSteamID()) continue;
+            bool isP2PSessionConnect = SteamP2PManager.Instance.IsP2PSessionConnected(player.Key);
+            Debug.Log($"{player.Key} isP2PSessionConnect: {isP2PSessionConnect}");
+        }
+        
+        
+        NetworkMessage message = new NetworkMessage()
+        {
+            messageType = MessageType.GameStart,
+            data = "start"
+        };
+        
+        
+        SteamP2PManager.Instance.HostSendMessage(message, EP2PSend.k_EP2PSendReliable);
     }
 
     private void InviteFriend()
